@@ -50,3 +50,43 @@ async def test_import_commit_and_undo(admin, db):
     assert r.status_code == 200
     assert await db.jobs.count_documents({}) == 0
     assert await db.lots.count_documents({}) == 0
+
+
+def test_production_sheet_without_timestamp(tmp_path):
+    """A plain 'Production' sheet (Completion Date, no Form Timestamp) must still be read as entries,
+    and when a Form 'Submissions' sheet is also present only one of them is used (no double count)."""
+    from datetime import datetime
+
+    from openpyxl import Workbook
+
+    from app.importer import parse_workbook
+
+    def build(with_submissions: bool):
+        wb = Workbook()
+        rc = wb.active
+        rc.title = "Rate Card"
+        rc.append(["Rate Card", "Colorwise Quantity"])
+        rc.append(["Lot No", "FRONT", "", "Lot", "A", "B"])
+        rc.append([501, 10, "", 501, 20, 30])
+        prod = wb.create_sheet("Production")
+        prod.append(["जॉब कम्पलीशन डेट (Work Completion Date)", "कारीगर का नाम (Name of Worker)",
+                     "लोट नंबर (Lot Number)", "जॉब का प्रकार (Work Type)", "कलर कोड (Color Code)", "Rate", "Qty", "Total"])
+        prod.append([datetime(2026, 9, 1), "सूरज (SURAJ)", 501, "फ्रंट (FRONT)", "A", 10, 20, 200])
+        prod.append([datetime(2026, 9, 1), "गुलाम (GULAM)", 501, "फ्रंट (FRONT)", "B", 10, 30, 300])
+        if with_submissions:
+            sub = wb.create_sheet("Submissions")
+            sub.append(["Timestamp", "कारीगर का नाम (Name of Worker)", "लोट नंबर (Lot Number)",
+                        "जॉब का प्रकार (Work Type)", "कलर कोड (Color Code)", "जॉब कम्पलीशन डेट (Work Completion Date)"])
+            sub.append([datetime(2026, 9, 2, 10), "सूरज (SURAJ)", 501, "फ्रंट (FRONT)", "A", datetime(2026, 9, 1)])
+            sub.append([datetime(2026, 9, 2, 11), "गुलाम (GULAM)", 501, "फ्रंट (FRONT)", "B", datetime(2026, 9, 1)])
+        path = tmp_path / f"wb_{with_submissions}.xlsx"
+        wb.save(path)
+        return parse_workbook(str(path))
+
+    only_prod = build(False)
+    assert only_prod["summary"]["entries"] == 2
+    assert only_prod["summary"]["amount_by_month"] == {"2026-09": 500.0}
+
+    both = build(True)
+    assert both["summary"]["entries"] == 2  # Submissions used, Production copy ignored
+    assert any("ignored Production" in w for w in both["warnings"])
