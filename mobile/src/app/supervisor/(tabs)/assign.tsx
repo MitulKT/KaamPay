@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Image, Switch, Text, TextInput, View } from 'react-native';
 
-import { Btn, Card, ColourChip, H, Line, Loading, Muted, Row, Screen, Tile, Wrap, haptic } from '@/components/ui';
+import { Btn, Card, ColourChip, Empty, H, Line, Loading, Muted, Row, Screen, SearchInput, Tile, Wrap, haptic } from '@/components/ui';
 import { fileUrl, get, postOrQueue } from '@/lib/api';
 import { inr, pcs } from '@/lib/format';
 import { notify, useData } from '@/lib/hooks';
@@ -10,6 +10,8 @@ import { C, SP } from '@/lib/theme';
 import type { Lot } from '@/lib/types';
 
 type WorkerTile = { id: string; name: string; name_local: string; photo_url?: string; worker_code?: string; open_jobs: number; pending_mobile: boolean };
+const STEPS = ['Worker', 'Lot', 'Work'];
+
 type RateRow = { work_type_id: string; code: string; name_en: string; name_hi?: string; rate: number | null };
 type Avail = { code: string; qty: number; taken_by: { worker_name: string; split: boolean; pieces?: number }[] }[];
 
@@ -145,10 +147,25 @@ export default function Assign() {
         </Row>
       }
     >
-      <Row style={{ marginBottom: SP.md }}>
-        {[1, 2, 3].map((n) => (
-          <View key={n} style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: step >= n ? C.primary : C.border }} />
-        ))}
+      {/* Labelled stepper: Worker → Lot → Work. Done steps are tappable to jump back. */}
+      <Row style={{ marginBottom: SP.md, alignItems: 'flex-start' }}>
+        {STEPS.map((label, i) => {
+          const n = i + 1;
+          const canJump = n < step;
+          return (
+            <View key={n} style={{ flex: 1, gap: 4 }}>
+              <View style={{ height: 6, borderRadius: 3, backgroundColor: step >= n ? C.primary : C.border }} />
+              <Text
+                onPress={canJump ? () => setStep(n) : undefined}
+                accessibilityRole={canJump ? 'button' : 'text'}
+                accessibilityState={{ selected: step === n }}
+                style={{ fontSize: 12, fontWeight: step === n ? '800' : '600', color: step >= n ? C.primary : C.muted }}
+              >
+                {n}. {label}
+              </Text>
+            </View>
+          );
+        })}
       </Row>
       {worker && step > 1 ? <Muted>Worker: {worker.name}</Muted> : null}
       {lot && step > 2 ? <Muted>Lot {lot.lot_no} · {lot.total_qty} pcs</Muted> : null}
@@ -156,7 +173,7 @@ export default function Assign() {
       {step === 1 && (
         <>
           <H style={{ marginTop: 0 }}>1. Pick worker</H>
-          <TextInput value={q} onChangeText={setQ} placeholder="Search" style={{ backgroundColor: '#fff', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: C.border, marginBottom: 10 }} />
+          {data?.workers.length ? <SearchInput value={q} onChangeText={setQ} placeholder="Search worker" /> : null}
           <Wrap>
             {workers.map((w) => (
               <Tile
@@ -174,13 +191,24 @@ export default function Assign() {
               />
             ))}
           </Wrap>
-          {!workers.length ? <Muted>No workers yet — add them in the Workers tab.</Muted> : null}
+          {!data?.workers.length ? (
+            <Empty
+              icon="people-outline"
+              text="No workers yet"
+              action={<Btn small icon="person-add" title="Add worker" onPress={() => router.push('/supervisor/worker-form')} />}
+            />
+          ) : !workers.length ? (
+            <Muted>No workers matching "{q}"</Muted>
+          ) : null}
         </>
       )}
 
       {step === 2 && (
         <>
           <H style={{ marginTop: 0 }}>2. Pick lot</H>
+          {!data?.lots.length ? (
+            <Empty text="No open lots" action={<Btn small icon="add" title="New lot" onPress={() => router.push('/supervisor/lot-form')} />} />
+          ) : null}
           <Wrap>
             {data?.lots.map((l) => (
               <Tile
@@ -253,7 +281,7 @@ export default function Assign() {
                       <Switch value={split} onValueChange={setSplit} />
                       <Text>Split by pieces</Text>
                       {split ? (
-                        <TextInput value={splitPcs} onChangeText={setSplitPcs} keyboardType="numeric" placeholder="pcs" style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: C.border, borderRadius: 8, padding: 8, width: 90 }} />
+                        <TextInput value={splitPcs} onChangeText={(v) => setSplitPcs(v.replace(/\D/g, ''))} keyboardType="number-pad" placeholder="pcs" placeholderTextColor={C.placeholder} accessibilityLabel="Pieces for this split" style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: C.border, borderRadius: 8, padding: 8, width: 90 }} />
                       ) : null}
                     </Row>
                   ) : null}
