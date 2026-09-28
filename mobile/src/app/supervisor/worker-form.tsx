@@ -9,6 +9,9 @@ import { takeAndUploadPhoto } from '@/lib/files';
 import { notify } from '@/lib/hooks';
 import type { Role, User, WorkType } from '@/lib/types';
 
+/** "SIDE POCKET" → "Side pocket" — easier to scan than all caps. */
+const titleCase = (x: string) => x.charAt(0).toUpperCase() + x.slice(1).toLowerCase();
+
 /** Add / edit a user. Supervisors can only add workers; admin can add any role. */
 export default function WorkerForm() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -81,13 +84,23 @@ export default function WorkerForm() {
       </Row>
       <Field label="Name (English)" value={f.name} onChangeText={set('name')} />
       <Field label="Name in Hindi / Gujarati (optional)" value={f.name_local} onChangeText={set('name_local')} />
-      <Field label="Mobile (+91) – needed for login" value={f.mobile} onChangeText={(v) => set('mobile')(v.replace(/\D/g, '').slice(0, 10))} keyboardType="number-pad" />
+      <Field
+        label="Mobile (+91) – needed for login"
+        value={f.mobile}
+        onChangeText={(v) => set('mobile')(v.replace(/\D/g, '').slice(0, 10))}
+        keyboardType="number-pad"
+        inputMode="tel"
+        maxLength={10}
+        placeholder="98XXXXXXXX"
+        invalid={!!f.mobile && f.mobile.length !== 10}
+        hint={f.mobile && f.mobile.length !== 10 ? `${f.mobile.length}/10 digits` : undefined}
+      />
       {isAdmin ? (
         <>
-          <Muted>Roles</Muted>
-          <Wrap style={{ marginVertical: 8 }}>
+          <H>Roles</H>
+          <Wrap style={{ marginBottom: 10 }}>
             {(['WORKER', 'SUPERVISOR', 'ADMIN'] as Role[]).map((r) => (
-              <Pill key={r} label={r} active={roles.includes(r)} onPress={() => setRoles((p) => (p.includes(r) ? p.filter((x) => x !== r) : [...p, r]))} />
+              <Pill key={r} label={titleCase(r)} active={roles.includes(r)} onPress={() => setRoles((p) => (p.includes(r) ? p.filter((x) => x !== r) : [...p, r]))} />
             ))}
           </Wrap>
         </>
@@ -97,7 +110,7 @@ export default function WorkerForm() {
           <H>Payment</H>
           <Wrap style={{ marginBottom: 10 }}>
             {['CASH', 'UPI', 'BANK'].map((m) => (
-              <Pill key={m} label={m} active={f.payment_mode === m} onPress={() => set('payment_mode')(m)} />
+              <Pill key={m} label={m === 'UPI' ? 'UPI' : titleCase(m)} active={f.payment_mode === m} onPress={() => set('payment_mode')(m)} />
             ))}
           </Wrap>
           {f.payment_mode === 'UPI' ? <Field label="UPI ID" value={f.upi_id} onChangeText={set('upi_id')} autoCapitalize="none" /> : null}
@@ -111,7 +124,7 @@ export default function WorkerForm() {
           <H>Skills</H>
           <Wrap>
             {wts.map((w) => (
-              <Pill key={w.id} label={w.code} active={skills.includes(w.id)} onPress={() => setSkills((p) => (p.includes(w.id) ? p.filter((x) => x !== w.id) : [...p, w.id]))} />
+              <Pill key={w.id} label={titleCase(w.name_en || w.code)} active={skills.includes(w.id)} onPress={() => setSkills((p) => (p.includes(w.id) ? p.filter((x) => x !== w.id) : [...p, w.id]))} />
             ))}
           </Wrap>
         </>
