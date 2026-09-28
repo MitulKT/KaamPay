@@ -6,6 +6,8 @@ export const C = {
   card: '#FFFFFF',
   text: '#0F172A',
   muted: '#64748B',
+  placeholder: '#94A3B8',
+  disabled: '#CBD5E1',
   border: '#E2E8F0',
   green: '#16A34A',
   red: '#DC2626',
@@ -33,4 +35,4 @@ export const FONT = {
   worker: { body: 20, big: 32, huge: 44, label: 16 },
   staff: { body: 16, big: 24, huge: 32, label: 13 },
 };
-export const TOUCH = { worker: 64, staff: 48 };
+export const TOUCH = { worker: 64, staff: 48, min: 44 };
