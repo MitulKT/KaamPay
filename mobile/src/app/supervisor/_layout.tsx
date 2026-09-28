@@ -7,12 +7,12 @@ import { C } from '@/lib/theme';
 
 export default function SupervisorLayout() {
   const { user, ready } = useAuth();
-  if (!ready) return <Loading />;
+  if (!ready) return <Loading full />;
   if (!user) return <Redirect href="/login" />;
   if (!user.roles.some((r) => r === 'SUPERVISOR' || r === 'ADMIN')) return <Redirect href="/role" />;
   return (
-    <Stack screenOptions={{ headerTintColor: C.primary, headerTitleStyle: { fontWeight: '800' } }}>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+    <Stack screenOptions={{ headerTintColor: C.primary, headerTitleStyle: { fontWeight: '800' }, headerBackTitle: 'Back' }}>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false, title: 'Home' }} />
       <Stack.Screen name="lot/[id]" options={{ title: 'Lot' }} />
       <Stack.Screen name="lot-form" options={{ title: 'Lot' }} />
       <Stack.Screen name="worker-form" options={{ title: 'Worker' }} />
