@@ -6,7 +6,7 @@ import { homeFor, useAuth } from '@/lib/auth';
 
 export default function Index() {
   const { ready, user, role } = useAuth();
-  if (!ready) return <Loading />;
+  if (!ready) return <Loading full />;
   if (!user) return <Redirect href="/login" />;
   return <Redirect href={homeFor(role) as never} />;
 }
