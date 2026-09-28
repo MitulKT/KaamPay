@@ -54,6 +54,7 @@ def parse_workbook(path_or_file) -> dict:
     data = {"workers": {}, "work_types": {}, "lots": set(), "colour_qty": {}, "rates": {}, "entries": [],
             "payments": []}
     warnings, errors = [], []
+    entry_sheets: dict[str, dict] = {}
 
     for ws in wb.worksheets:
         rows = list(ws.iter_rows(values_only=True))
@@ -129,9 +130,14 @@ def parse_workbook(path_or_file) -> dict:
                     en, local = split_bilingual(str(r[0]))
                     data["work_types"].setdefault(en.upper(), local)
 
-        # --- submissions (form entries). Prefer the sheet with Timestamp; skip a duplicate 'Production' copy.
-        if "NAME OF WORKER" in first and "LOT NUMBER" in first and "WORK TYPE" in first and "TIMESTAMP" in first:
-            ix = {name: first.index(name) for name in ("TIMESTAMP", "NAME OF WORKER", "LOT NUMBER", "WORK TYPE")}
+        # --- production entries. Either a Google-Form 'Submissions' sheet (has Timestamp) or a plain
+        # 'Production' sheet (Completion Date, no Timestamp). Collected per sheet; picked after the loop so a
+        # workbook holding both (the Production tab is usually a copy) is never counted twice.
+        if "NAME OF WORKER" in first and "LOT NUMBER" in first and "WORK TYPE" in first:
+            has_ts = "TIMESTAMP" in first
+            ix = {name: first.index(name) for name in ("NAME OF WORKER", "LOT NUMBER", "WORK TYPE")}
+            ix["TIMESTAMP"] = first.index("TIMESTAMP") if has_ts else None
+            sheet_entries = entry_sheets.setdefault(ws.title, {"has_ts": has_ts, "entries": []})["entries"]
             colour_i = next((i for i, c in enumerate(first) if c.startswith("COLOR") or c.startswith("COLOUR")), None)
             month_i = next((i for i, c in enumerate(first) if "COMPLETION" in c or c == "MONTH"), None)
             for n, r in enumerate(rows[1:], start=2):
@@ -148,9 +154,9 @@ def parse_workbook(path_or_file) -> dict:
                 colours = [c.strip().upper() for c in str(r[colour_i] if colour_i is not None else "ALL").split(",")
                            if c.strip()]
                 colours = ["ALL"] if "ALL" in colours else colours
-                ts = r[ix["TIMESTAMP"]]
+                ts = r[ix["TIMESTAMP"]] if ix["TIMESTAMP"] is not None else None
                 month = r[month_i] if month_i is not None else None
-                data["entries"].append({"row": n, "sheet": ws.title, "worker": en.upper(),
+                sheet_entries.append({"row": n, "sheet": ws.title, "worker": en.upper(),
                                         "lot": _lot(r[ix["LOT NUMBER"]]), "work_types": wts, "colours": colours,
                                         "timestamp": ts if isinstance(ts, datetime) else None,
                                         "month": month if isinstance(month, datetime) else None})
@@ -164,6 +170,14 @@ def parse_workbook(path_or_file) -> dict:
                                              "month": r[0] if isinstance(r[0], datetime) else None})
 
     wb.close()
+    # Prefer Form 'Submissions' sheets (with Timestamp); fall back to plain 'Production' sheets.
+    chosen = [n for n, v in entry_sheets.items() if v["has_ts"]] or list(entry_sheets)
+    for n in chosen:
+        data["entries"].extend(entry_sheets[n]["entries"])
+    skipped = [n for n in entry_sheets if n not in chosen and entry_sheets[n]["entries"]]
+    if skipped:
+        warnings.append(f"Used production entries from {', '.join(chosen)}; ignored {', '.join(skipped)} "
+                        "(looks like a copy of the same data)")
     return build_report(data, warnings, errors)
 
 
