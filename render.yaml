@@ -1,0 +1,21 @@
+# Render Blueprint: New + > Blueprint > pick this repo. Fill MONGO_URL when asked.
+services:
+  - type: web
+    name: kaampay
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    region: singapore        # closest Render region to India
+    plan: free               # switch to "starter" before go-live (free sleeps when idle)
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: MONGO_URL
+        sync: false          # paste the MongoDB Atlas connection string
+      - key: DB_NAME
+        value: kaampay
+      - key: JWT_SECRET
+        generateValue: true
+      - key: OTP_PROVIDER
+        value: dev           # change to msg91 once the DLT template is approved
+      - key: EXPO_PUSH_ENABLED
+        value: "false"

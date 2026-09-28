@@ -1,0 +1,56 @@
+{
+  "expo": {
+    "name": "KaamPay",
+    "slug": "kaampay",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kaampay.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.kaampay.app",
+      "permissions": [
+        "CAMERA"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-sharing",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "KaamPay needs the camera to take a photo of finished work."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#3730A3"
+        }
+      ]
+    ],
+    "scheme": "kaampay",
+    "extra": {
+      "apiUrl": "http://192.168.1.10:8000",
+      "eas": {
+        "projectId": ""
+      }
+    }
+  }
+}

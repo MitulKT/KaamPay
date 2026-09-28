@@ -1,4 +1,3 @@
-[README.md](https://github.com/user-attachments/files/32737907/README.md)
 # KaamPay — Job-Work Payout App
 
 KaamPay is a mobile app for garment manufacturers. The supervisor assigns lot work, the worker taps **Done**, the supervisor checks it and the admin approves. The app then calculates each payout from the lot's colour quantities and rate master, recovers advances, records payment and gives every worker a slip they can share on WhatsApp.

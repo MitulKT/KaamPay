@@ -1,0 +1,10 @@
+**/node_modules
+**/.expo
+**/dist
+**/__pycache__
+**/.pytest_cache
+backend/uploads
+backend/tests
+docs
+.git
+*.zip
