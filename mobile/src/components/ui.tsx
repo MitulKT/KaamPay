@@ -80,10 +80,18 @@ export function OfflineBanner() {
 export function Card({ children, style, onPress }: { children: React.ReactNode; style?: ViewStyle; onPress?: () => void }) {
   if (!onPress) return <View style={[s.card, style]}>{children}</View>;
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [s.card, style, pressed && { opacity: 0.85 }]}>
+    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [s.card, style, pressed && { opacity: 0.85 }]}>
       {children}
     </Pressable>
   );
+}
+
+/** Blend a hex colour toward white. Used for disabled buttons: a solid tint instead of
+ *  opacity, so content scrolling underneath a sticky footer never shows through. */
+export function tint(hex: string, amount = 0.55) {
+  const n = parseInt(hex.replace('#', ''), 16);
+  const ch = (sh: number) => Math.round(((n >> sh) & 255) + (255 - ((n >> sh) & 255)) * amount);
+  return `rgb(${ch(16)}, ${ch(8)}, ${ch(0)})`;
 }
 
 export function Btn({
@@ -97,6 +105,7 @@ export function Btn({
   loading,
   style,
   small,
+  soft,
 }: {
   title: string;
   onPress?: () => void;
@@ -106,13 +115,19 @@ export function Btn({
   big?: boolean;
   small?: boolean;
   disabled?: boolean;
+  /** looks disabled but stays tappable (e.g. to reveal what's missing) */
+  soft?: boolean;
   loading?: boolean;
   style?: ViewStyle;
 }) {
   const h = big ? 64 : small ? 36 : 48;
-  const fg = outline ? color : '#fff';
+  const dim = disabled || soft;
+  const fg = outline ? (dim ? tint(color) : color) : '#fff';
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityState={{ disabled: !!(disabled || loading), busy: !!loading }}
       disabled={disabled || loading}
       onPress={() => {
         haptic.tap();
@@ -123,14 +138,14 @@ export function Btn({
           minHeight: h,
           borderRadius: R.card,
           paddingHorizontal: small ? 12 : 18,
-          backgroundColor: outline ? 'transparent' : color,
+          backgroundColor: outline ? 'transparent' : dim ? tint(color) : color,
           borderWidth: outline ? 2 : 0,
-          borderColor: color,
+          borderColor: dim ? tint(color) : color,
           alignItems: 'center',
           justifyContent: 'center',
           flexDirection: 'row',
           gap: 8,
-          opacity: disabled ? 0.45 : pressed ? 0.85 : 1,
+          opacity: pressed && !disabled ? 0.85 : 1,
         },
         style,
       ]}
@@ -152,6 +167,7 @@ export function Tile({
   width = '48%',
   big,
   badge,
+  style,
 }: {
   label: string;
   sub?: string;
@@ -162,9 +178,13 @@ export function Tile({
   width?: ViewStyle['width'];
   big?: boolean;
   badge?: string | number;
+  style?: ViewStyle;
 }) {
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={sub ? `${label}, ${sub}` : label}
+      accessibilityState={{ selected: !!selected, disabled: !!disabled }}
       disabled={disabled}
       onPress={() => {
         haptic.tap();
@@ -175,6 +195,7 @@ export function Tile({
         { width, minHeight: big ? 96 : 76 },
         selected && { borderColor: C.primary, backgroundColor: C.primaryLight },
         disabled && { opacity: 0.4 },
+        style,
       ]}
     >
       {icon ? <Ionicons name={icon} size={big ? 30 : 24} color={selected ? C.primary : C.muted} /> : null}
@@ -218,6 +239,9 @@ export function ColourChip({
 }) {
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Colour ${code}${sub ? `, ${sub}` : ''}${taken ? ', taken' : ''}`}
+      accessibilityState={{ selected: !!selected, disabled: !!taken }}
       disabled={taken}
       onPress={() => {
         haptic.tap();
@@ -255,8 +279,12 @@ export function ColourChip({
 
 export function Kpi({ label, value, color = C.text, sub, onPress, style }: { label: string; value: string | number; color?: string; sub?: string; onPress?: () => void; style?: ViewStyle }) {
   return (
-    <Card style={{ flex: 1, minWidth: 140, ...style }} onPress={onPress}>
-      <Text style={{ fontSize: 12, color: C.muted, fontWeight: '600' }}>{label}</Text>
+    // marginBottom 0: the parent <Wrap gap> owns spacing, so row gap == column gap.
+    <Card style={{ flex: 1, minWidth: 140, marginBottom: 0, ...style }} onPress={onPress}>
+      <Row style={{ justifyContent: 'space-between' }} gap={4}>
+        <Text style={{ fontSize: 12, color: C.muted, fontWeight: '600', flexShrink: 1 }}>{label}</Text>
+        {onPress ? <Ionicons name="chevron-forward" size={14} color={C.placeholder} /> : null}
+      </Row>
       <Text style={{ fontSize: 22, fontWeight: '800', color, marginTop: 2 }}>{value}</Text>
       {sub ? <Text style={{ fontSize: 12, color: C.muted }}>{sub}</Text> : null}
     </Card>
@@ -281,10 +309,30 @@ export function Empty({ text, icon = 'file-tray-outline', action }: { text: stri
   );
 }
 
-export function Loading() {
+export function Loading({ full, text }: { full?: boolean; text?: string }) {
+  if (full) return <Splash text={text} />;
   return (
-    <View style={{ padding: 40 }}>
+    <View style={{ padding: 40 }} accessibilityRole="progressbar" accessibilityLabel="Loading">
       <ActivityIndicator size="large" color={C.primary} />
+    </View>
+  );
+}
+
+/** Full-screen branded loader — used while auth restores / the server wakes up (Render cold start). */
+export function Splash({ text }: { text?: string }) {
+  const [slow, setSlow] = React.useState(false);
+  React.useEffect(() => {
+    const t = setTimeout(() => setSlow(true), 2500);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: C.bg, gap: 14, padding: 24 }} accessibilityRole="progressbar" accessibilityLabel="Loading KaamPay">
+      <View style={{ width: 64, height: 64, borderRadius: 18, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center' }}>
+        <Ionicons name="briefcase" size={32} color="#fff" />
+      </View>
+      <Text style={{ fontSize: 22, fontWeight: '900', color: C.text }}>KaamPay</Text>
+      <ActivityIndicator color={C.primary} />
+      <Text style={{ fontSize: 13, color: C.muted, textAlign: 'center' }}>{slow ? 'Waking up the server… this can take a few seconds' : text || 'Loading…'}</Text>
     </View>
   );
 }
@@ -314,11 +362,105 @@ export function Wrap({ children, gap = SP.sm, style }: { children: React.ReactNo
   return <View style={[{ flexDirection: 'row', flexWrap: 'wrap', gap }, style]}>{children}</View>;
 }
 
-export function Field({ label, style, ...props }: TextInputProps & { label: string }) {
+export function Field({ label, style, invalid, hint, ...props }: TextInputProps & { label: string; invalid?: boolean; hint?: string }) {
   return (
     <View style={{ marginBottom: SP.md }}>
-      <Text style={{ fontSize: 13, fontWeight: '700', color: C.muted, marginBottom: 4 }}>{label}</Text>
-      <TextInput placeholderTextColor="#94A3B8" style={[s.input, style]} {...props} />
+      <Text style={{ fontSize: 13, fontWeight: '700', color: invalid ? C.red : C.muted, marginBottom: 4 }}>{label}</Text>
+      <TextInput
+        accessibilityLabel={label}
+        accessibilityHint={hint}
+        placeholderTextColor={C.placeholder}
+        style={[s.input, invalid && { borderColor: C.red }, style]}
+        {...props}
+      />
+      {hint ? <Text style={{ fontSize: 12, color: invalid ? C.red : C.muted, marginTop: 4 }}>{hint}</Text> : null}
+    </View>
+  );
+}
+
+/** Search box with icon + clear button. Placeholder is always the light grey token. */
+export function SearchInput({ value, onChangeText, placeholder = 'Search', style }: { value: string; onChangeText: (v: string) => void; placeholder?: string; style?: ViewStyle }) {
+  return (
+    <View style={[s.search, style]}>
+      <Ionicons name="search" size={18} color={C.placeholder} />
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={C.placeholder}
+        accessibilityLabel={placeholder}
+        autoCorrect={false}
+        style={{ flex: 1, minWidth: 0, fontSize: 16, color: C.text, paddingVertical: 12 }}
+      />
+      {value ? (
+        <Pressable accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => onChangeText('')} style={s.iconBtn}>
+          <Ionicons name="close-circle" size={18} color={C.placeholder} />
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+const pad = (n: number) => String(n).padStart(2, '0');
+export const isoDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+export const addDays = (n: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return isoDate(d);
+};
+
+/**
+ * Date input. Web → the browser's native date picker. Phone → numeric keypad that
+ * auto-inserts dashes (YYYY-MM-DD) + quick "+1w / +2w / +1m" chips.
+ */
+export function DateField({ label, value, onChange, quick = [7, 14, 30] }: { label: string; value: string; onChange: (v: string) => void; quick?: number[] }) {
+  const valid = !value || /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const quickLabel = (n: number) => (n % 30 === 0 ? `+${n / 30}m` : n % 7 === 0 ? `+${n / 7}w` : `+${n}d`);
+  return (
+    <View style={{ marginBottom: SP.md }}>
+      <Text style={{ fontSize: 13, fontWeight: '700', color: valid ? C.muted : C.red, marginBottom: 4 }}>{label}</Text>
+      {Platform.OS === 'web' ? (
+        React.createElement('input', {
+          type: 'date',
+          value,
+          'aria-label': label,
+          onChange: (e: { target: { value: string } }) => onChange(e.target.value),
+          // plain DOM input: RN shorthand props (paddingHorizontal) don't apply, so spell out CSS
+          style: {
+            backgroundColor: '#fff',
+            border: `1px solid ${C.border}`,
+            borderRadius: 10,
+            padding: '12px',
+            fontSize: 16,
+            color: C.text,
+            fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+            width: '100%',
+            boxSizing: 'border-box',
+            minHeight: 48,
+            outlineColor: C.primary,
+          },
+        })
+      ) : (
+        <TextInput
+          accessibilityLabel={label}
+          value={value}
+          keyboardType="number-pad"
+          maxLength={10}
+          placeholder="YYYY-MM-DD"
+          placeholderTextColor={C.placeholder}
+          onChangeText={(v) => {
+            const d = v.replace(/\D/g, '').slice(0, 8);
+            onChange([d.slice(0, 4), d.slice(4, 6), d.slice(6, 8)].filter(Boolean).join('-'));
+          }}
+          style={[s.input, !valid && { borderColor: C.red }]}
+        />
+      )}
+      <Wrap style={{ marginTop: 8 }}>
+        {quick.map((n) => (
+          <Pill key={n} label={quickLabel(n)} active={value === addDays(n)} onPress={() => onChange(addDays(n))} />
+        ))}
+      </Wrap>
+      {!valid ? <Text style={{ fontSize: 12, color: C.red, marginTop: 4 }}>Use format YYYY-MM-DD</Text> : null}
     </View>
   );
 }
@@ -329,6 +471,8 @@ export function Segmented<T extends string>({ options, value, onChange }: { opti
       {options.map((o) => (
         <Pressable
           key={o.value}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: value === o.value }}
           onPress={() => onChange(o.value)}
           style={{ flex: 1, paddingVertical: 9, borderRadius: 10, backgroundColor: value === o.value ? '#fff' : 'transparent', alignItems: 'center' }}
         >
@@ -351,10 +495,16 @@ export function Sheet({ visible, onClose, children }: { visible: boolean; onClos
 export function Pill({ label, active, onPress }: { label: string; active?: boolean; onPress?: () => void }) {
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: !!active }}
       onPress={onPress}
+      hitSlop={4}
       style={{
-        paddingHorizontal: 12,
-        paddingVertical: 7,
+        minHeight: 40,
+        justifyContent: 'center',
+        paddingHorizontal: 14,
+        paddingVertical: 8,
         borderRadius: R.chip,
         backgroundColor: active ? C.primary : '#fff',
         borderWidth: 1,
@@ -398,7 +548,9 @@ const s = StyleSheet.create({
     gap: 4,
   },
   badge: { position: 'absolute', top: 6, left: 6, backgroundColor: C.primary, borderRadius: 10, minWidth: 20, paddingHorizontal: 5, alignItems: 'center' },
+  search: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: C.border, paddingLeft: 12, marginBottom: 10 },
+  iconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   input: { backgroundColor: '#fff', borderWidth: 1, borderColor: C.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16, color: C.text },
-  footer: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: SP.lg, backgroundColor: 'rgba(248,250,252,0.97)', borderTopWidth: 1, borderColor: C.border },
+  footer: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: SP.lg, backgroundColor: C.bg, borderTopWidth: 1, borderColor: C.border },
   sheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: SP.xl, paddingBottom: 40 },
 });
