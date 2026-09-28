@@ -7,12 +7,12 @@ import { C } from '@/lib/theme';
 
 export default function AdminLayout() {
   const { user, ready } = useAuth();
-  if (!ready) return <Loading />;
+  if (!ready) return <Loading full />;
   if (!user) return <Redirect href="/login" />;
   if (!user.roles.includes('ADMIN')) return <Redirect href="/role" />;
   return (
-    <Stack screenOptions={{ headerTintColor: C.primary, headerTitleStyle: { fontWeight: '800' } }}>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+    <Stack screenOptions={{ headerTintColor: C.primary, headerTitleStyle: { fontWeight: '800' }, headerBackTitle: 'Back' }}>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false, title: 'Home' }} />
       <Stack.Screen name="cycle/[id]" options={{ title: 'Payout cycle' }} />
       <Stack.Screen name="money-entry" options={{ title: 'Advance / Deduction' }} />
       <Stack.Screen name="settings" options={{ title: 'Settings' }} />

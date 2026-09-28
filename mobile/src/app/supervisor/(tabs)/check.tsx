@@ -77,7 +77,7 @@ export default function Check() {
       }
     >
       {loading && !data ? <Loading /> : null}
-      {data && !jobs.length ? <Empty icon="checkmark-done-circle-outline" text="Nothing to check 👍" /> : null}
+      {data && !jobs.length ? <Empty icon="checkmark-done-circle-outline" text="Nothing waiting for check" /> : null}
       {Object.entries(byLot).map(([lot, js]) => (
         <React.Fragment key={lot}>
           <H>

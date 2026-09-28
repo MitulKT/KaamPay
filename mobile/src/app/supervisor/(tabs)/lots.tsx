@@ -1,8 +1,8 @@
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { Text, TextInput } from 'react-native';
+import { Text } from 'react-native';
 
-import { Btn, Card, Empty, Loading, Muted, Pill, Progress, Row, Screen, StatusChip, Wrap } from '@/components/ui';
+import { Btn, Card, Empty, Loading, Muted, Pill, Progress, Row, Screen, SearchInput, StatusChip, Wrap } from '@/components/ui';
 import { get } from '@/lib/api';
 import { fmtDate } from '@/lib/format';
 import { useData } from '@/lib/hooks';
@@ -17,19 +17,24 @@ const FILTERS = [
 ];
 
 export default function Lots() {
-  const [status, setStatus] = useState('IN_PRODUCTION');
+  const [status, setStatus] = useState(''); // 'All' by default so a new user never sees a misleading "No lots"
   const [q, setQ] = useState('');
   const { data, loading, refreshing, reload } = useData(() => get<Lot[]>('/lots', { status, q }), [status, q], `lots-${status}`);
   return (
     <Screen refreshing={refreshing} onRefresh={reload} footer={<Btn icon="add" title="New lot" onPress={() => router.push('/supervisor/lot-form')} />}>
-      <TextInput value={q} onChangeText={setQ} placeholder="Search lot no" style={{ backgroundColor: '#fff', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: C.border, fontSize: 16, marginBottom: 10 }} />
+      <SearchInput value={q} onChangeText={setQ} placeholder="Search lot no" />
       <Wrap style={{ marginBottom: 12 }}>
         {FILTERS.map((f) => (
           <Pill key={f.v} label={f.l} active={status === f.v} onPress={() => setStatus(f.v)} />
         ))}
       </Wrap>
       {loading && !data ? <Loading /> : null}
-      {data && !data.length ? <Empty text="No lots" /> : null}
+      {data && !data.length ? (
+        <Empty
+          text={q ? `No lots matching "${q}"` : status ? `No ${FILTERS.find((f) => f.v === status)?.l.toLowerCase()} lots` : 'No lots yet — create your first one'}
+          action={status || q ? <Btn small outline title="Show all lots" onPress={() => { setStatus(''); setQ(''); }} /> : null}
+        />
+      ) : null}
       {data?.map((l) => {
         const pct = l.progress?.percent_done ?? 0;
         return (

@@ -216,7 +216,7 @@ function RatesTab({ lotId, isAdmin }: { lotId: string; isAdmin: boolean }) {
       footer={
         Object.keys(edits).length ? (
           <View style={{ gap: 8 }}>
-            <TextInput value={reason} onChangeText={setReason} placeholder="Reason (needed if jobs already use a rate)" style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: C.border, borderRadius: 8, padding: 10 }} />
+            <TextInput placeholderTextColor={C.placeholder} value={reason} onChangeText={setReason} placeholder="Reason (needed if jobs already use a rate)" style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: C.border, borderRadius: 8, padding: 10 }} />
             <Btn title={`Save ${Object.keys(edits).length} rate(s)`} loading={busy} onPress={save} />
           </View>
         ) : undefined

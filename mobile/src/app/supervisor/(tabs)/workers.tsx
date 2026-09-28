@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { Image, Text, TextInput, View } from 'react-native';
+import { Image, Text, View } from 'react-native';
 
-import { Btn, Card, Empty, Loading, Muted, Row, Screen } from '@/components/ui';
+import { Btn, Card, Empty, Loading, Muted, Row, Screen, SearchInput } from '@/components/ui';
 import { fileUrl, get } from '@/lib/api';
 import { inr } from '@/lib/format';
 import { useData } from '@/lib/hooks';
@@ -16,9 +16,9 @@ export default function Workers() {
   const list = (data || []).filter((w) => !q || `${w.name} ${w.name_local} ${w.mobile}`.toLowerCase().includes(q.toLowerCase()));
   return (
     <Screen refreshing={refreshing} onRefresh={reload} footer={<Btn icon="person-add" title="Add worker" onPress={() => router.push('/supervisor/worker-form')} />}>
-      <TextInput value={q} onChangeText={setQ} placeholder="Search name / mobile" style={{ backgroundColor: '#fff', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: C.border, marginBottom: 10, fontSize: 16 }} />
+      <SearchInput value={q} onChangeText={setQ} placeholder="Search name / mobile" />
       {loading && !data ? <Loading /> : null}
-      {data && !list.length ? <Empty icon="people-outline" text="No workers" /> : null}
+      {data && !list.length ? <Empty icon="people-outline" text={q ? `No workers matching "${q}"` : 'No workers yet — add your first one below'} /> : null}
       {list.map((w) => (
         <Card key={w.id} onPress={() => router.push(`/supervisor/worker/${w.id}`)}>
           <Row>
