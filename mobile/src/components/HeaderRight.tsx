@@ -17,18 +17,26 @@ export function HeaderRight() {
     }, []),
   );
   return (
-    <View style={{ flexDirection: 'row', gap: 18, marginRight: 14 }}>
-      <Pressable onPress={() => router.push('/notifications')} hitSlop={10}>
+    <View style={{ flexDirection: 'row', gap: 4, marginRight: 6 }}>
+      <Pressable
+        onPress={() => router.push('/notifications')}
+        style={box}
+        accessibilityRole="button"
+        accessibilityLabel={unread ? `Notifications, ${unread} unread` : 'Notifications'}
+      >
         <Ionicons name="notifications-outline" size={26} color={C.primary} />
         {unread ? (
-          <View style={{ position: 'absolute', top: -4, right: -6, backgroundColor: C.red, borderRadius: 9, minWidth: 18, paddingHorizontal: 4, alignItems: 'center' }}>
+          <View style={{ position: 'absolute', top: 4, right: 2, backgroundColor: C.red, borderRadius: 9, minWidth: 18, paddingHorizontal: 4, alignItems: 'center' }}>
             <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>{unread > 99 ? '99+' : unread}</Text>
           </View>
         ) : null}
       </Pressable>
-      <Pressable onPress={() => router.push('/profile')} hitSlop={10}>
+      <Pressable onPress={() => router.push('/profile')} style={box} accessibilityRole="button" accessibilityLabel="Profile">
         <Ionicons name="person-circle-outline" size={28} color={C.primary} />
       </Pressable>
     </View>
   );
 }
+
+// 44×44 = minimum comfortable thumb target (Apple HIG / Material).
+const box = { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' } as const;
